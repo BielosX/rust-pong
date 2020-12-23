@@ -9,4 +9,3 @@ edition = "2018"
 [dependencies]
 sdl2 = "0.34"
 serde_json = "1.0"
-ndarray = "0.14.0"
