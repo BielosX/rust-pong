@@ -184,7 +184,7 @@ fn draw(context: &mut Context) {
     let mut quit = false;
     let mut first_player = Player {rect: Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, norm: Vect {x: 1.0, y: 0.0} };
     let mut second_player = Player {rect: Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, norm: Vect {x: -1.0, y: 0.0} };
-    let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect {x: 100.0, y: 0.0} };
+    let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect {x: 200.0, y: 0.0} };
     let mut delta: f32 = 0.0;
     while !quit {
         let now = Instant::now();
