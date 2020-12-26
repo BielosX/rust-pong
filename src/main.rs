@@ -3,8 +3,6 @@ extern crate nalgebra;
 
 use std::time::Instant;
 use std::cmp::Ordering;
-use std::vec::Vec;
-use std::boxed::Box;
 
 use sdl2::render::WindowCanvas;
 use sdl2::EventPump;
@@ -158,7 +156,7 @@ impl Ball {
         self.rect.y += delta_time * self.velocity.y;
     }
 
-    pub fn calc_velocity(&mut self, obstacles: &Vec<&dyn Obstacle>) {
+    pub fn calc_velocity(&mut self, obstacles: &[&dyn Obstacle]) {
         for obstacle in obstacles {
             if obstacle.collision(self) {
                 obstacle.bounce_ball(self)
@@ -244,11 +242,7 @@ fn draw(context: &mut Context) {
                 _ => {}
             }
         }
-        let mut obstacles: Vec<&dyn Obstacle> = Vec::new();
-        obstacles.push(&first_player);
-        obstacles.push(&second_player);
-        obstacles.push(&upper);
-        obstacles.push(&lower);
+        let obstacles: [&dyn Obstacle; 4] = [&first_player, &second_player, &upper, &lower];
         ball.calc_velocity(&obstacles);
         ball.move_ball(delta);
         first_player.draw(&mut context.canvas);
