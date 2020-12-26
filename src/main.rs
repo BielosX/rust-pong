@@ -63,7 +63,8 @@ impl Rectangle {
 
 struct Player {
     rect: Rectangle,
-    norm: Vect
+    norm: Vect,
+    velocity: f32
 }
 
 fn approx_equal (a: f32, b: f32) -> bool {
@@ -77,6 +78,10 @@ fn approx_equal (a: f32, b: f32) -> bool {
 }
 
 impl Player {
+    fn new(rect: Rectangle, norm: Vect) -> Player {
+        Player {rect: rect, norm: norm, velocity: 0.0}
+    }
+
     fn top_collision(&self) -> bool {
         approx_equal(self.rect.y, 0.0) || self.rect.y < 0.0
     }
@@ -86,22 +91,21 @@ impl Player {
         approx_equal(bottom, 600.0) || bottom > 600.0
     }
 
-    pub fn move_down(&mut self, delta_time: f32) {
-        let velocity: f32 = 3000.0;
-        if !self.bottom_collision() {
-            self.rect.y += delta_time * velocity;
+    pub fn move_player(&mut self, delta_time: f32) {
+        if !self.top_collision() && self.velocity < 0.0 {
+            self.rect.y += delta_time * self.velocity;
         }
-    }
-
-    pub fn move_up(&mut self, delta_time: f32) {
-        let velocity: f32 = -3000.0;
-        if !self.top_collision() {
-            self.rect.y += delta_time * velocity;
+        if !self.bottom_collision() && self.velocity > 0.0 {
+            self.rect.y += delta_time * self.velocity;
         }
     }
     
     pub fn draw(&mut self, canvas: &mut WindowCanvas) {
         self.rect.draw(canvas)
+    }
+
+    pub fn set_velocity(&mut self, velocity: f32) {
+        self.velocity = velocity
     }
 }
 
@@ -241,13 +245,19 @@ fn tick(event_pump: &mut EventPump,
     for event in event_pump.poll_iter() {
         match event {
             Event::KeyDown { keycode: Some(Keycode::Escape), ..} => quit = true,
-            Event::KeyDown { keycode: Some(Keycode::Up), ..} => second_player.move_up(delta),
-            Event::KeyDown { keycode: Some(Keycode::Down), ..} => second_player.move_down(delta),
-            Event::KeyDown { keycode: Some(Keycode::W), ..} => first_player.move_up(delta),
-            Event::KeyDown { keycode: Some(Keycode::S), ..} => first_player.move_down(delta),
+            Event::KeyDown { keycode: Some(Keycode::Up), repeat: false, ..} => second_player.set_velocity(-40.0),
+            Event::KeyDown { keycode: Some(Keycode::Down), repeat: false, ..} => second_player.set_velocity(40.0),
+            Event::KeyDown { keycode: Some(Keycode::W), repeat: false, ..} => first_player.set_velocity(-40.0),
+            Event::KeyDown { keycode: Some(Keycode::S), repeat: false, ..} => first_player.set_velocity(40.0),
+            Event::KeyUp { keycode: Some(Keycode::Up), repeat: false, ..} => second_player.set_velocity(0.0),
+            Event::KeyUp { keycode: Some(Keycode::Down), repeat: false, ..} => second_player.set_velocity(0.0),
+            Event::KeyUp { keycode: Some(Keycode::W), repeat: false, ..} => first_player.set_velocity(0.0),
+            Event::KeyUp { keycode: Some(Keycode::S), repeat: false, ..} => first_player.set_velocity(0.0),
             _ => {}
         }
     }
+    first_player.move_player(delta);
+    second_player.move_player(delta);
     let obstacles: [&dyn Obstacle; 4] = [first_player, second_player, upper, lower];
     ball.calc_velocity(&obstacles);
     ball.move_ball(delta);
@@ -256,8 +266,8 @@ fn tick(event_pump: &mut EventPump,
 
 fn draw(context: &mut Context) {
     let mut quit = false;
-    let mut first_player = Player {rect: Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(1.0, 0.0) };
-    let mut second_player = Player {rect: Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(-1.0, 0.0) };
+    let mut first_player = Player::new(Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, Vect::new(1.0, 0.0));
+    let mut second_player = Player::new(Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, Vect::new(-1.0, 0.0));
     let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(20.0, 0.0) };
     let upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
     let lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
