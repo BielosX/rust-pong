@@ -1,4 +1,5 @@
 extern crate sdl2;
+extern crate nalgebra;
 
 use std::time::Instant;
 
@@ -10,32 +11,13 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 
-struct Vect {
-    x: f32,
-    y: f32
-}
+use nalgebra::Vector2;
 
-impl Vect {
-    pub fn dot(&self, other: &Vect) -> f32 {
-        self.x * other.x + self.y * other.y
-    }
-
-    pub fn mul(&self, value: f32) -> Vect {
-        Vect {x: self.x * value, y: self.y * value}
-    }
-
-    pub fn sub(&self, other: &Vect) -> Vect {
-        Vect {x: self.x - other.x, y: self.y - other.y}
-    }
-
-    pub fn inv(&self) -> Vect {
-        Vect {x: -self.x, y: -self.y}
-    }
-}
+pub type Vect = Vector2<f32>;
 
 fn reflection(vec: &Vect, normal: &Vect) -> Vect {
     let coef = vec.dot(normal) * 2.0;
-    normal.mul(coef).sub(vec).inv()
+    -1.0 * (coef * normal - vec)
 }
 
 struct Context {
@@ -182,9 +164,9 @@ fn create_context() -> Result<Context, String> {
 
 fn draw(context: &mut Context) {
     let mut quit = false;
-    let mut first_player = Player {rect: Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, norm: Vect {x: 1.0, y: 0.0} };
-    let mut second_player = Player {rect: Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, norm: Vect {x: -1.0, y: 0.0} };
-    let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect {x: 200.0, y: 0.0} };
+    let mut first_player = Player {rect: Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(1.0, 0.0) };
+    let mut second_player = Player {rect: Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(-1.0, 0.0) };
+    let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(200.0, 0.0) };
     let mut delta: f32 = 0.0;
     while !quit {
         let now = Instant::now();
