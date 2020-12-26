@@ -35,7 +35,7 @@ struct Rectangle {
 impl Rectangle {
     pub fn draw(&self, canvas: &mut WindowCanvas) {
         let rect = Rect::new(self.x as i32, self.y as i32, self.width, self.height);
-        canvas.set_draw_color(Color::RGB(0, 0, 255));
+        canvas.set_draw_color(Color::WHITE);
         canvas.fill_rect(rect).unwrap()
     }
 }
@@ -81,6 +81,10 @@ impl Player {
     
     pub fn draw(&mut self, canvas: &mut WindowCanvas) {
         self.rect.draw(canvas)
+    }
+
+    pub fn right_x(&self) -> f32 {
+        self.rect.x + self.rect.width as f32
     }
 }
 
@@ -170,7 +174,7 @@ fn draw(context: &mut Context) {
     let mut delta: f32 = 0.0;
     while !quit {
         let now = Instant::now();
-        context.canvas.set_draw_color(Color::RGB(100,100,0));
+        context.canvas.set_draw_color(Color::BLACK);
         context.canvas.clear();
         ball.calc_velocity(&first_player, &second_player);
         for event in context.event_pump.poll_iter() {
