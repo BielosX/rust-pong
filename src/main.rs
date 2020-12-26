@@ -87,14 +87,14 @@ impl Player {
     }
 
     pub fn move_down(&mut self, delta_time: f32) {
-        let velocity: f32 = 300.0;
+        let velocity: f32 = 3000.0;
         if !self.bottom_collision() {
             self.rect.y += delta_time * velocity;
         }
     }
 
     pub fn move_up(&mut self, delta_time: f32) {
-        let velocity: f32 = -300.0;
+        let velocity: f32 = -3000.0;
         if !self.top_collision() {
             self.rect.y += delta_time * velocity;
         }
@@ -230,39 +230,53 @@ fn create_context() -> Result<Context, String> {
     Ok(Context {canvas, event_pump})
 }
 
+fn tick(event_pump: &mut EventPump,
+    first_player: &mut Player,
+    second_player: &mut Player,
+    upper: &Border,
+    lower: &Border,
+    ball: &mut Ball) -> bool {
+    let delta: f32 = 0.01;
+    let mut quit = false;
+    for event in event_pump.poll_iter() {
+        match event {
+            Event::KeyDown { keycode: Some(Keycode::Escape), ..} => quit = true,
+            Event::KeyDown { keycode: Some(Keycode::Up), ..} => second_player.move_up(delta),
+            Event::KeyDown { keycode: Some(Keycode::Down), ..} => second_player.move_down(delta),
+            Event::KeyDown { keycode: Some(Keycode::W), ..} => first_player.move_up(delta),
+            Event::KeyDown { keycode: Some(Keycode::S), ..} => first_player.move_down(delta),
+            _ => {}
+        }
+    }
+    let obstacles: [&dyn Obstacle; 4] = [first_player, second_player, upper, lower];
+    ball.calc_velocity(&obstacles);
+    ball.move_ball(delta);
+    quit
+}
+
 fn draw(context: &mut Context) {
     let mut quit = false;
     let mut first_player = Player {rect: Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(1.0, 0.0) };
     let mut second_player = Player {rect: Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(-1.0, 0.0) };
-    let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(200.0, 0.0) };
+    let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(20.0, 0.0) };
     let upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
     let lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
-    let mut delta: f32 = 0.0;
+    let mut time: u128 = 0;
     while !quit {
+        if time > 10000 {
+            quit = tick(&mut context.event_pump, &mut first_player, &mut second_player, &upper, &lower, &mut ball);
+            time = 0;
+        }
         let now = Instant::now();
         context.canvas.set_draw_color(Color::BLACK);
         context.canvas.clear();
-        for event in context.event_pump.poll_iter() {
-            match event {
-                Event::KeyDown { keycode: Some(Keycode::Escape), ..} => quit = true,
-                Event::KeyDown { keycode: Some(Keycode::Up), ..} => second_player.move_up(delta),
-                Event::KeyDown { keycode: Some(Keycode::Down), ..} => second_player.move_down(delta),
-                Event::KeyDown { keycode: Some(Keycode::W), ..} => first_player.move_up(delta),
-                Event::KeyDown { keycode: Some(Keycode::S), ..} => first_player.move_down(delta),
-                _ => {}
-            }
-        }
-        let obstacles: [&dyn Obstacle; 4] = [&first_player, &second_player, &upper, &lower];
-        ball.calc_velocity(&obstacles);
-        ball.move_ball(delta);
         first_player.draw(&mut context.canvas);
         second_player.draw(&mut context.canvas);
         ball.draw(&mut context.canvas);
         upper.draw(&mut context.canvas);
         lower.draw(&mut context.canvas);
         context.canvas.present();
-        std::thread::sleep_ms(50);
-        delta = (now.elapsed().as_micros() as f32) / 1000000.0;
+        time += now.elapsed().as_nanos();
     }
 }
 
