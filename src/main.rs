@@ -2,6 +2,9 @@ extern crate sdl2;
 extern crate nalgebra;
 
 use std::time::Instant;
+use std::cmp::Ordering;
+use std::vec::Vec;
+use std::boxed::Box;
 
 use sdl2::render::WindowCanvas;
 use sdl2::EventPump;
@@ -16,6 +19,14 @@ use nalgebra::Vector2;
 
 pub type Vect = Vector2<f32>;
 
+trait Obstacle {
+    fn collision(&self, ball: &Ball) -> bool;
+    fn normal(&self, ball: &Ball) -> Vect;
+    fn bounce_ball(&self, ball: &mut Ball) {
+        ball.velocity = reflection(&ball.velocity, &self.normal(ball))
+    }
+}
+
 fn reflection(vec: &Vect, normal: &Vect) -> Vect {
     let coef = vec.dot(normal) * 2.0;
     -1.0 * (coef * normal - vec)
@@ -26,6 +37,7 @@ struct Context {
     event_pump: EventPump
 }
 
+#[derive(Clone)]
 struct Rectangle {
     x: f32,
     y: f32,
@@ -39,8 +51,17 @@ impl Rectangle {
         canvas.set_draw_color(Color::WHITE);
         canvas.fill_rect(rect).unwrap()
     }
+
+    pub fn right_x(&self) -> f32 {
+        self.x + self.width as f32
+    }
+    
+    pub fn bottom_y(&self) -> f32 {
+        self.y + self.height as f32
+    }
 }
 
+#[derive(Clone)]
 struct Player {
     rect: Rectangle,
     norm: Vect
@@ -83,27 +104,50 @@ impl Player {
     pub fn draw(&mut self, canvas: &mut WindowCanvas) {
         self.rect.draw(canvas)
     }
+}
 
-    pub fn right_x(&self) -> f32 {
-        self.rect.x + self.rect.width as f32
+fn compare(first: (i32, i32), second: (i32, i32)) -> Ordering {
+    let (first_position, _first_index) = first;
+    let (second_position, _second_index) = second;
+    first_position.cmp(&second_position)
+}
+
+impl Obstacle for Player {
+
+    fn collision(&self, ball: &Ball) -> bool {
+        let mut horizontal = [
+            (self.rect.x as i32, 0), (self.rect.right_x() as i32, 0),
+            (ball.rect.x as i32, 1), (ball.rect.right_x() as i32, 1)
+        ];
+        let mut vertical = [
+            (self.rect.y as i32, 0), (self.rect.bottom_y() as i32, 0),
+            (ball.rect.y as i32, 1), (ball.rect.bottom_y() as i32, 1)
+        ];
+        horizontal.sort_by(|a,b| compare(*a, *b));
+        vertical.sort_by(|a,b| compare(*a, *b));
+        let horizontal_ok;
+        let vertical_ok;
+        match horizontal {
+            [(_, 0), (_, 0), _, _] => horizontal_ok = true,
+            [(_, 1), (_, 1), _, _] => horizontal_ok = true,
+            _ => horizontal_ok = false,
+        }
+        match vertical {
+            [(_, 0), (_, 0), _, _] => vertical_ok = true,
+            [(_, 1), (_, 1), _, _] => vertical_ok = true,
+            _ => vertical_ok = false,
+        }
+        !horizontal_ok && !vertical_ok
+    }
+
+    fn normal(&self, _ball: &Ball) -> Vect {
+        self.norm
     }
 }
 
 struct Ball {
     rect: Rectangle,
     velocity: Vect
-}
-
-#[derive(Debug)]
-struct Pair {
-    first: f32,
-    second: u32
-}
-
-impl Pair {
-    pub fn new(f: f32, s: u32) -> Pair {
-        Pair {first: f, second: s}
-    }
 }
 
 impl Ball {
@@ -116,42 +160,16 @@ impl Ball {
         self.rect.y += delta_time * self.velocity.y;
     }
 
-    pub fn collision(&self, player: &Player) -> bool {
-        let mut horizontal = [Pair::new(self.rect.x, 0),
-            Pair::new(self.rect.x + self.rect.width as f32, 0),
-            Pair::new(player.rect.x, 1),
-            Pair::new(player.rect.x + player.rect.width as f32, 1)];
-        let mut vertical = [Pair::new(self.rect.y, 0),
-            Pair::new(self.rect.y + self.rect.height as f32, 0),
-            Pair::new(player.rect.y, 1),
-            Pair::new(player.rect.y + player.rect.height as f32, 1)];
-        horizontal.sort_by(|a,b| (a.first as i32).cmp(&(b.first as i32)));
-        vertical.sort_by(|a,b| (a.first as i32).cmp(&(b.first as i32)));
-        let horizontal_ok;
-        let vertical_ok;
-        match horizontal {
-            [Pair {first: _, second: 0}, Pair {first: _, second: 0}, _, _] => horizontal_ok = true,
-            [Pair {first: _, second: 1}, Pair {first: _, second: 1}, _, _] => horizontal_ok = true,
-            _ => horizontal_ok = false,
-        }
-        match vertical {
-            [Pair {first: _, second: 0}, Pair {first: _, second: 0}, _, _] => vertical_ok = true,
-            [Pair {first: _, second: 1}, Pair {first: _, second: 1}, _, _] => vertical_ok = true,
-            _ => vertical_ok = false,
-        }
-        !horizontal_ok && !vertical_ok
-    }
-
-    pub fn calc_velocity(&mut self, first_player: &Player, second_player: &Player) {
-        if self.collision(first_player) {
-            self.velocity = reflection(&self.velocity, &first_player.norm)
-        }
-        if self.collision(second_player) {
-            self.velocity = reflection(&self.velocity, &second_player.norm)
+    pub fn calc_velocity(&mut self, obstacles: &Vec<&dyn Obstacle>) {
+        for obstacle in obstacles {
+            if obstacle.collision(self) {
+                obstacle.bounce_ball(self)
+            }
         }
     }
 }
 
+#[derive(Clone)]
 enum Border {
     Upper { norm: Vect, width: i32 },
     Lower { norm: Vect, bottom: i32, width: i32 }
@@ -171,6 +189,22 @@ impl Border {
                 let end = Point::new(*width, *bottom);
                 canvas.draw_line(start, end).unwrap();
             }
+        }
+    }
+}
+
+impl Obstacle for Border {
+    fn collision(&self, ball: &Ball) -> bool {
+        match self {
+            Border::Upper {..} => ball.rect.y < 0.0,
+            Border::Lower {bottom, ..} => ball.rect.y > *bottom as f32
+        }
+    }
+
+    fn normal(&self, _ball: &Ball) -> Vect {
+        match self {
+            Border::Lower {norm, ..} => *norm,
+            Border::Upper {norm, ..} => *norm
         }
     }
 }
@@ -202,7 +236,6 @@ fn draw(context: &mut Context) {
         let now = Instant::now();
         context.canvas.set_draw_color(Color::BLACK);
         context.canvas.clear();
-        ball.calc_velocity(&first_player, &second_player);
         for event in context.event_pump.poll_iter() {
             match event {
                 Event::KeyDown { keycode: Some(Keycode::Escape), ..} => quit = true,
@@ -213,6 +246,12 @@ fn draw(context: &mut Context) {
                 _ => {}
             }
         }
+        let mut obstacles: Vec<&dyn Obstacle> = Vec::new();
+        obstacles.push(&first_player);
+        obstacles.push(&second_player);
+        obstacles.push(&upper);
+        obstacles.push(&lower);
+        ball.calc_velocity(&obstacles);
         ball.move_ball(delta);
         first_player.draw(&mut context.canvas);
         second_player.draw(&mut context.canvas);
