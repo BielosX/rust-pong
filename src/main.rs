@@ -37,7 +37,6 @@ struct Context {
     event_pump: EventPump
 }
 
-#[derive(Clone)]
 struct Rectangle {
     x: f32,
     y: f32,
@@ -61,7 +60,6 @@ impl Rectangle {
     }
 }
 
-#[derive(Clone)]
 struct Player {
     rect: Rectangle,
     norm: Vect
