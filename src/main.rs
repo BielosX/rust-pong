@@ -10,6 +10,7 @@ use sdl2::Sdl;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
+use sdl2::rect::Point;
 
 use nalgebra::Vector2;
 
@@ -151,6 +152,29 @@ impl Ball {
     }
 }
 
+enum Border {
+    Upper { norm: Vect, width: i32 },
+    Lower { norm: Vect, bottom: i32, width: i32 }
+}
+
+impl Border {
+    pub fn draw(&self, canvas: &mut WindowCanvas) {
+        canvas.set_draw_color(Color::WHITE);
+        match self {
+            Border::Upper {width, ..} => {
+                let start = Point::new(0, 0);
+                let end = Point::new(*width, 0);
+                canvas.draw_line(start, end).unwrap();
+            },
+            Border::Lower {bottom, width, ..} => {
+                let start = Point::new(0, *bottom);
+                let end = Point::new(*width, *bottom);
+                canvas.draw_line(start, end).unwrap();
+            }
+        }
+    }
+}
+
 fn create_canvas(sdl_context: &Sdl) -> Result<WindowCanvas, String> {
     let video_subsystem = sdl_context.video()?;
     let window = video_subsystem.window("rust-pong", 800, 600)
@@ -171,6 +195,8 @@ fn draw(context: &mut Context) {
     let mut first_player = Player {rect: Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(1.0, 0.0) };
     let mut second_player = Player {rect: Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(-1.0, 0.0) };
     let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(200.0, 0.0) };
+    let mut upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
+    let mut lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
     let mut delta: f32 = 0.0;
     while !quit {
         let now = Instant::now();
@@ -191,6 +217,8 @@ fn draw(context: &mut Context) {
         first_player.draw(&mut context.canvas);
         second_player.draw(&mut context.canvas);
         ball.draw(&mut context.canvas);
+        upper.draw(&mut context.canvas);
+        lower.draw(&mut context.canvas);
         context.canvas.present();
         std::thread::sleep_ms(50);
         delta = (now.elapsed().as_micros() as f32) / 1000000.0;
