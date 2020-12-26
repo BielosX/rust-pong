@@ -195,8 +195,8 @@ fn draw(context: &mut Context) {
     let mut first_player = Player {rect: Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(1.0, 0.0) };
     let mut second_player = Player {rect: Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, norm: Vect::new(-1.0, 0.0) };
     let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(200.0, 0.0) };
-    let mut upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
-    let mut lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
+    let upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
+    let lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
     let mut delta: f32 = 0.0;
     while !quit {
         let now = Instant::now();
