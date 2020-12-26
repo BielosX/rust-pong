@@ -3,6 +3,7 @@ extern crate nalgebra;
 
 use std::time::Instant;
 use std::cmp::Ordering;
+use std::f32::consts::PI;
 
 use sdl2::render::WindowCanvas;
 use sdl2::EventPump;
@@ -14,6 +15,8 @@ use sdl2::rect::Rect;
 use sdl2::rect::Point;
 
 use nalgebra::Vector2;
+use nalgebra::Vector3;
+use nalgebra::Matrix3;
 
 pub type Vect = Vector2<f32>;
 
@@ -136,8 +139,16 @@ impl Obstacle for Player {
         !horizontal_ok && !vertical_ok
     }
 
-    fn normal(&self, _ball: &Ball) -> Vect {
-        self.norm
+    fn normal(&self, ball: &Ball) -> Vect {
+        let center_y = self.rect.y + (self.rect.height as f32 / 2.0);
+        let ball_center_y = ball.rect.y - ball.rect.height as f32 / 2.0;
+        let center_diff = ball_center_y - center_y;
+        let shift = center_diff / (self.rect.width as f32 / 2.0);
+        let angle = (shift * PI / 8.0) * self.norm.x;
+        let rotation = Matrix3::new_rotation(angle);
+        let norm3 = Vector3::new(self.norm.x, self.norm.y, 1.0);
+        let rotated_norm = rotation * norm3;
+        rotated_norm.xy()
     }
 }
 
@@ -165,7 +176,6 @@ impl Ball {
     }
 }
 
-#[derive(Clone)]
 enum Border {
     Upper { norm: Vect, width: i32 },
     Lower { norm: Vect, bottom: i32, width: i32 }
@@ -193,7 +203,7 @@ impl Obstacle for Border {
     fn collision(&self, ball: &Ball) -> bool {
         match self {
             Border::Upper {..} => ball.rect.y < 0.0,
-            Border::Lower {bottom, ..} => ball.rect.y > *bottom as f32
+            Border::Lower {bottom, ..} => ball.rect.bottom_y() > *bottom as f32
         }
     }
 
