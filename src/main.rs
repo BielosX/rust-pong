@@ -12,6 +12,7 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 use sdl2::rect::Point;
+use sdl2::ttf;
 
 use nalgebra::Vector2;
 
@@ -32,7 +33,8 @@ fn reflection(vec: &Vect, normal: &Vect) -> Vect {
 
 struct Context {
     canvas: WindowCanvas,
-    event_pump: EventPump
+    event_pump: EventPump,
+    ttf_context: ttf::Sdl2TtfContext
 }
 
 struct Rectangle {
@@ -224,7 +226,8 @@ fn create_context() -> Result<Context, String> {
     let sdl_context = sdl2::init()?;
     let canvas = create_canvas(&sdl_context)?;
     let event_pump = sdl_context.event_pump()?;
-    Ok(Context {canvas, event_pump})
+    let ttf_context = ttf::init().map_err(|x| -> String {x.to_string()})?;
+    Ok(Context {canvas, event_pump, ttf_context})
 }
 
 fn tick(event_pump: &mut EventPump,
@@ -265,6 +268,10 @@ fn draw(context: &mut Context) {
     let upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
     let lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
     let mut time: u128 = 0;
+    let font = context.ttf_context.load_font("Lato-Black.ttf", 32).expect("Unable to load font");
+    let font_surface = font.render("Test").solid(Color::WHITE).expect("Unable to render font");
+    let texture_creator = context.canvas.texture_creator();
+    let texture = texture_creator.create_texture_from_surface(font_surface).unwrap();
     while !quit {
         if time > 10000 {
             quit = tick(&mut context.event_pump, &mut first_player, &mut second_player, &upper, &lower, &mut ball);
@@ -278,6 +285,7 @@ fn draw(context: &mut Context) {
         ball.draw(&mut context.canvas);
         upper.draw(&mut context.canvas);
         lower.draw(&mut context.canvas);
+        context.canvas.copy(&texture, None, None).unwrap();
         context.canvas.present();
         time += now.elapsed().as_nanos();
     }

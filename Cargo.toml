@@ -17,3 +17,4 @@ features = ["ttf"]
 
 [build-dependencies]
 reqwest = { version = "0.10.10", features = ["blocking"] }
+zip = "0.5"
