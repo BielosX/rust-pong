@@ -14,6 +14,7 @@ use sdl2::rect::Rect;
 use sdl2::rect::Point;
 use sdl2::ttf;
 use sdl2::ttf::Font;
+use sdl2::surface::Surface;
 
 use nalgebra::Vector2;
 
@@ -247,7 +248,8 @@ fn tick(event_pump: &mut EventPump,
     upper: &Border,
     lower: &Border,
     ball: &mut Ball,
-    score_board: &mut ScoreBoard) -> bool {
+    score_board: &mut ScoreBoard,
+    font: &Font) -> bool {
     let delta: f32 = 0.01;
     let mut quit = false;
     for event in event_pump.poll_iter() {
@@ -269,11 +271,11 @@ fn tick(event_pump: &mut EventPump,
     let obstacles: [&dyn Obstacle; 4] = [first_player, second_player, upper, lower];
     ball.calc_velocity(&obstacles);
     if ball.rect.x < 0.0 {
-        score_board.second += 1;
+        score_board.inc_second(font);
         ball.set_to_origin();
     }
     else if ball.rect.right_x() > 800.0 {
-        score_board.first += 1;
+        score_board.inc_first(font);
         ball.set_to_origin();
     }
     else {
@@ -282,28 +284,43 @@ fn tick(event_pump: &mut EventPump,
     quit
 }
 
-fn render_text(text: &str, font: &Font, canvas: &mut WindowCanvas, x: i32, y: i32) {
-    let font_surface = font.render(text).solid(Color::WHITE).expect("Unable to render font");
-    let texture_creator = canvas.texture_creator();
-    let texture = texture_creator.create_texture_from_surface(font_surface).unwrap();
-    let width = texture.query().width;
-    let height = texture.query().height;
-    let dst = Rect::new(x, y, width, height);
-    canvas.copy(&texture, None, dst).unwrap();
-}
-
-struct ScoreBoard {
+struct ScoreBoard<'r> {
     first: u32,
-    second: u32
+    second: u32,
+    surface: Surface<'r>,
+    x: i32,
+    y: i32
 }
 
-impl ScoreBoard {
-    fn new() -> ScoreBoard {
-        ScoreBoard {first: 0, second: 0}
+impl<'r> ScoreBoard<'r> {
+    fn new(font: &Font, x: i32, y: i32) -> ScoreBoard<'r> {
+        let font_surface = font.render("0:0").solid(Color::WHITE).expect("Unable to render font");
+        ScoreBoard {first: 0, second: 0, surface: font_surface, x: x, y: y}
     }
 
-    fn draw(&self, font: &Font, canvas: &mut WindowCanvas) {
-        render_text(format!("{}:{}", self.first, self.second).as_str(), font, canvas, 400, 0);
+    fn update_surface(&mut self, font: &Font) {
+        let text = format!("{}:{}", self.first, self.second);
+        let font_surface = font.render(text.as_str()).solid(Color::WHITE).expect("Unable to render font");
+        self.surface = font_surface
+    }
+
+    fn inc_first(&mut self, font: &Font) {
+        self.first += 1;
+        self.update_surface(font)
+    }
+
+    fn inc_second(&mut self, font: &Font) {
+        self.second += 1;
+        self.update_surface(font)
+    }
+
+    fn draw(&mut self, canvas: &mut WindowCanvas) {
+        let texture_creator = canvas.texture_creator();
+        let texture = texture_creator.create_texture_from_surface(&self.surface).unwrap();
+        let width = texture.query().width;
+        let height = texture.query().height;
+        let dst = Rect::new(self.x, self.y, width, height);
+        canvas.copy(&texture, None, dst).unwrap();
     }
 }
 
@@ -314,12 +331,19 @@ fn draw(context: &mut Context) {
     let mut ball = Ball::new();
     let upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
     let lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
-    let mut score_board = ScoreBoard::new();
     let mut time: u128 = 0;
     let font = context.ttf_context.load_font("Lato-Black.ttf", 32).expect("Unable to load font");
+    let mut score_board = ScoreBoard::new(&font, 400, 0);
     while !quit {
         if time > 10000 {
-            quit = tick(&mut context.event_pump, &mut first_player, &mut second_player, &upper, &lower, &mut ball, &mut score_board);
+            quit = tick(&mut context.event_pump,
+                &mut first_player,
+                &mut second_player,
+                &upper,
+                &lower,
+                &mut ball,
+                &mut score_board,
+                &font);
             time = 0;
         }
         let now = Instant::now();
@@ -330,7 +354,7 @@ fn draw(context: &mut Context) {
         ball.draw(&mut context.canvas);
         upper.draw(&mut context.canvas);
         lower.draw(&mut context.canvas);
-        score_board.draw(&font, &mut context.canvas);
+        score_board.draw(&mut context.canvas);
         context.canvas.present();
         time += now.elapsed().as_nanos();
     }
