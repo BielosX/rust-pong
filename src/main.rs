@@ -13,6 +13,7 @@ use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 use sdl2::rect::Point;
 use sdl2::ttf;
+use sdl2::ttf::Font;
 
 use nalgebra::Vector2;
 
@@ -260,6 +261,31 @@ fn tick(event_pump: &mut EventPump,
     quit
 }
 
+fn render_text(text: &str, font: &Font, canvas: &mut WindowCanvas, x: i32, y: i32) {
+    let font_surface = font.render(text).solid(Color::WHITE).expect("Unable to render font");
+    let texture_creator = canvas.texture_creator();
+    let texture = texture_creator.create_texture_from_surface(font_surface).unwrap();
+    let width = texture.query().width;
+    let height = texture.query().height;
+    let dst = Rect::new(x, y, width, height);
+    canvas.copy(&texture, None, dst).unwrap();
+}
+
+struct ScoreBoard {
+    first: u32,
+    second: u32
+}
+
+impl ScoreBoard {
+    fn new() -> ScoreBoard {
+        ScoreBoard {first: 0, second: 0}
+    }
+
+    fn draw(&self, font: &Font, canvas: &mut WindowCanvas) {
+        render_text(format!("{}:{}", self.first, self.second).as_str(), font, canvas, 400, 0);
+    }
+}
+
 fn draw(context: &mut Context) {
     let mut quit = false;
     let mut first_player = Player::new(Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, Vect::new(1.0, 0.0));
@@ -267,11 +293,9 @@ fn draw(context: &mut Context) {
     let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(20.0, 0.0) };
     let upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
     let lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
+    let mut score_board = ScoreBoard::new();
     let mut time: u128 = 0;
     let font = context.ttf_context.load_font("Lato-Black.ttf", 32).expect("Unable to load font");
-    let font_surface = font.render("Test").solid(Color::WHITE).expect("Unable to render font");
-    let texture_creator = context.canvas.texture_creator();
-    let texture = texture_creator.create_texture_from_surface(font_surface).unwrap();
     while !quit {
         if time > 10000 {
             quit = tick(&mut context.event_pump, &mut first_player, &mut second_player, &upper, &lower, &mut ball);
@@ -285,7 +309,7 @@ fn draw(context: &mut Context) {
         ball.draw(&mut context.canvas);
         upper.draw(&mut context.canvas);
         lower.draw(&mut context.canvas);
-        context.canvas.copy(&texture, None, None).unwrap();
+        score_board.draw(&font, &mut context.canvas);
         context.canvas.present();
         time += now.elapsed().as_nanos();
     }
