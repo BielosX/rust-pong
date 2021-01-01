@@ -174,6 +174,16 @@ impl Ball {
             }
         }
     }
+
+    pub fn new() -> Ball {
+        Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(20.0, 0.0) }
+    }
+
+    pub fn set_to_origin(&mut self) {
+        self.rect.x = 200.0;
+        self.rect.y = 200.0;
+        self.velocity = Vect::new(20.0, 0.0);
+    }
 }
 
 enum Border {
@@ -236,7 +246,8 @@ fn tick(event_pump: &mut EventPump,
     second_player: &mut Player,
     upper: &Border,
     lower: &Border,
-    ball: &mut Ball) -> bool {
+    ball: &mut Ball,
+    score_board: &mut ScoreBoard) -> bool {
     let delta: f32 = 0.01;
     let mut quit = false;
     for event in event_pump.poll_iter() {
@@ -257,7 +268,17 @@ fn tick(event_pump: &mut EventPump,
     second_player.move_player(delta);
     let obstacles: [&dyn Obstacle; 4] = [first_player, second_player, upper, lower];
     ball.calc_velocity(&obstacles);
-    ball.move_ball(delta);
+    if ball.rect.x < 0.0 {
+        score_board.second += 1;
+        ball.set_to_origin();
+    }
+    else if ball.rect.right_x() > 800.0 {
+        score_board.first += 1;
+        ball.set_to_origin();
+    }
+    else {
+        ball.move_ball(delta);
+    }
     quit
 }
 
@@ -290,7 +311,7 @@ fn draw(context: &mut Context) {
     let mut quit = false;
     let mut first_player = Player::new(Rectangle {x: 10.0, y: 10.0, width: 25, height: 150}, Vect::new(1.0, 0.0));
     let mut second_player = Player::new(Rectangle {x: 750.0, y: 10.0, width: 25, height: 150}, Vect::new(-1.0, 0.0));
-    let mut ball = Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(20.0, 0.0) };
+    let mut ball = Ball::new();
     let upper = Border::Upper {norm: Vect::new(0.0, -1.0), width: 800};
     let lower = Border::Lower {norm: Vect::new(0.0, 1.0), width: 800, bottom: 599};
     let mut score_board = ScoreBoard::new();
@@ -298,7 +319,7 @@ fn draw(context: &mut Context) {
     let font = context.ttf_context.load_font("Lato-Black.ttf", 32).expect("Unable to load font");
     while !quit {
         if time > 10000 {
-            quit = tick(&mut context.event_pump, &mut first_player, &mut second_player, &upper, &lower, &mut ball);
+            quit = tick(&mut context.event_pump, &mut first_player, &mut second_player, &upper, &lower, &mut ball, &mut score_board);
             time = 0;
         }
         let now = Instant::now();
