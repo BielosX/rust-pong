@@ -177,13 +177,13 @@ impl Ball {
     }
 
     pub fn new() -> Ball {
-        Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(20.0, 0.0) }
+        Ball {rect: Rectangle{x: 200.0, y: 200.0, width: 25, height: 25}, velocity: Vect::new(400.0, 0.0) }
     }
 
     pub fn set_to_origin(&mut self) {
         self.rect.x = 200.0;
         self.rect.y = 200.0;
-        self.velocity = Vect::new(20.0, 0.0);
+        self.velocity = Vect::new(400.0, 0.0);
     }
 }
 
@@ -255,10 +255,10 @@ fn tick(event_pump: &mut EventPump,
     for event in event_pump.poll_iter() {
         match event {
             Event::KeyDown { keycode: Some(Keycode::Escape), ..} => quit = true,
-            Event::KeyDown { keycode: Some(Keycode::Up), repeat: false, ..} => second_player.set_velocity(-40.0),
-            Event::KeyDown { keycode: Some(Keycode::Down), repeat: false, ..} => second_player.set_velocity(40.0),
-            Event::KeyDown { keycode: Some(Keycode::W), repeat: false, ..} => first_player.set_velocity(-40.0),
-            Event::KeyDown { keycode: Some(Keycode::S), repeat: false, ..} => first_player.set_velocity(40.0),
+            Event::KeyDown { keycode: Some(Keycode::Up), repeat: false, ..} => second_player.set_velocity(-600.0),
+            Event::KeyDown { keycode: Some(Keycode::Down), repeat: false, ..} => second_player.set_velocity(600.0),
+            Event::KeyDown { keycode: Some(Keycode::W), repeat: false, ..} => first_player.set_velocity(-600.0),
+            Event::KeyDown { keycode: Some(Keycode::S), repeat: false, ..} => first_player.set_velocity(600.0),
             Event::KeyUp { keycode: Some(Keycode::Up), repeat: false, ..} => second_player.set_velocity(0.0),
             Event::KeyUp { keycode: Some(Keycode::Down), repeat: false, ..} => second_player.set_velocity(0.0),
             Event::KeyUp { keycode: Some(Keycode::W), repeat: false, ..} => first_player.set_velocity(0.0),
@@ -336,15 +336,20 @@ fn draw(context: &mut Context) {
     let mut score_board = ScoreBoard::new(&font, 400, 0);
     while !quit {
         if time > 10000 {
-            quit = tick(&mut context.event_pump,
-                &mut first_player,
-                &mut second_player,
-                &upper,
-                &lower,
-                &mut ball,
-                &mut score_board,
-                &font);
-            time = 0;
+            let ticks = time / 10000;
+            let mut quit_tick;
+            for _ in 0..ticks {
+                quit_tick = tick(&mut context.event_pump,
+                    &mut first_player,
+                    &mut second_player,
+                    &upper,
+                    &lower,
+                    &mut ball,
+                    &mut score_board,
+                    &font);
+                quit = quit || quit_tick;
+            }
+            time = time % 10000;
         }
         let now = Instant::now();
         context.canvas.set_draw_color(Color::BLACK);
@@ -356,7 +361,7 @@ fn draw(context: &mut Context) {
         lower.draw(&mut context.canvas);
         score_board.draw(&mut context.canvas);
         context.canvas.present();
-        time += now.elapsed().as_nanos();
+        time += now.elapsed().as_micros();
     }
 }
 
