@@ -22,5 +22,5 @@ fn main() {
     let mut file = archive.by_name("Lato-Black.ttf").expect("Unable to find file in archive");
     let mut out = File::create("data/Lato-Black.ttf").expect("Unable to create ttf file");
     std::io::copy(&mut file, &mut out).unwrap();
-    std::fs::copy("data/Lato-Black.ttf", format!("target/{}/Lato-Black.ttf", profile));
+    std::fs::copy("data/Lato-Black.ttf", format!("target/{}/Lato-Black.ttf", profile)).unwrap();
 }
